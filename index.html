@@ -7,18 +7,22 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div style="display: flex; align-items: center; gap: 10px;">
-    <img src="logo.png" alt="FreeEvent Logo" style="height: 50px;">
-    <div>
-        <h1>🎫 FreeEvent</h1>
-        <p>Все бесплатные события твоего города в одном месте</p>
-    </div>
-</div>
+
 <div class="header">
     <div class="header-top">
-        <div>
-            <h1>🎫 FreeEvent</h1>
-            <p>Все бесплатные события твоего города в одном месте</p>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <!-- БЛОК ДЛЯ ЛОГОТИПА -->
+            <div class="logo-area" id="logoArea">
+                <img id="siteLogo" src="logo.png" alt="FreeEvent Logo" style="height: 150px; width: auto; display: block;" 
+                     onerror="this.onerror=null; this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
+                <div id="logoFallback" style="display: none; align-items: center; justify-content: center; background: #0f2b3d; width: 55px; height: 55px; border-radius: 12px; font-size: 60px;">
+                    📅
+                </div>
+            </div>
+            <div>
+                <h1>FreeEvent</h1>
+                <p>Все бесплатные события твоего города в одном месте</p>
+            </div>
         </div>
         <button class="theme-toggle" id="themeToggleBtn">
             🌙 Тёмная тема
@@ -32,7 +36,6 @@
 </div>
 
 <div class="container" id="app">
-    <!-- сюда динамически загружаются страницы -->
     <div style="text-align: center; padding: 3rem;">Загрузка событий...</div>
 </div>
 
@@ -44,7 +47,7 @@
 <script>
     // Глобальные переменные
     let eventsData = [];
-    let currentFilter = "все";
+    let currentFilter = "Все";   // теперь "Все" (с большой буквы)
     let currentPage = "home";
 
     // === УПРАВЛЕНИЕ ТЁМНОЙ ТЕМОЙ ===
@@ -87,12 +90,16 @@
         }
     }
 
-    function renderEventsPage() {
-        let filteredEvents = eventsData;
-        if (currentFilter !== "все") {
-            filteredEvents = eventsData.filter(e => e.category === currentFilter);
+    // Получить отфильтрованные события (по категории)
+    function getFilteredEvents() {
+        if (currentFilter === "Все") {
+            return eventsData;
         }
+        return eventsData.filter(e => e.category === currentFilter);
+    }
 
+    function renderEventsPage() {
+        const filteredEvents = getFilteredEvents();
         const filterButtons = getFilterButtonsHtml();
         
         if (filteredEvents.length === 0) {
@@ -129,7 +136,7 @@
             <div class="filters">
                 <span class="filter-label">📂 Категории:</span>
                 ${categories.map(cat => `
-                    <button class="filter-btn ${currentFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat === 'все' ? 'Все' : cat}</button>
+                    <button class="filter-btn ${currentFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat}</button>
                 `).join('')}
             </div>
         `;
@@ -144,7 +151,7 @@
                 <p>Каждый день в городе проходят десятки лекций, выставок и концертов — совершенно бесплатно. FreeEvent собирает их для вас.</p>
                 <p style="margin-top: 0.5rem;"><strong>Выберите город:</strong> 
                     <select id="citySelect" style="padding: 0.3rem;">
-                       <option selected>Симферополь</option>
+                        <option selected>Симферополь</option>
                         <option>Алупка</option>
                         <option>Алушта</option>
                         <option>Армянск</option>
@@ -162,8 +169,6 @@
                         <option>Ялта</option>
                     </select>
                 </p>
-                <p style="font-size: 0.8rem; opacity: 0.7;">※ Сейчас доступен только город Симферополь. 
-                    Другие города будут добавлены в следующих обновлениях.</p>
             </div>
             
             <h2>⚡ Ближайшие события</h2>
@@ -223,6 +228,7 @@
             if (showAllBtn) {
                 showAllBtn.addEventListener("click", () => {
                     currentPage = "events";
+                    currentFilter = "Все";  // Сбрасываем фильтр на "Все"
                     render();
                     updateNavActive();
                 });
@@ -230,15 +236,7 @@
             const citySelect = document.getElementById("citySelect");
             if (citySelect) {
                 citySelect.addEventListener("change", (e) => {
-                    const defaultCity = "Симферополь"
-                    const selectedCity = e.target.value
-                    if(selectedCity !== defaultCity){
-                        alert(`⚠️ Город "${selectedCity}" пока не подключён. Возвращаемся к городу по умолчанию — "${defaultCity}".`);
-                        citySelect.value = defaultCity
-                    }else{
-                        alert(`✅ Город "${defaultCity}" уже доступен. События для него уже в каталоге!`);
-                    }
-                    //alert(`✨ В будущей версии: события для города "${e.target.value}". А пока собираем афишу для вашего города!`);
+                    alert(`✨ В будущей версии: события для города "${e.target.value}". А пока собираем афишу для вашего города!`);
                 });
             }
         } 
@@ -285,12 +283,16 @@
         link.addEventListener("click", (e) => {
             e.preventDefault();
             const page = link.getAttribute("data-page");
-            if (page === "home") currentPage = "home";
+            if (page === "home") {
+                currentPage = "home";
+            }
             if (page === "events") {
                 currentPage = "events";
-                currentFilter = "все";
+                currentFilter = "Все";   // Важно: при заходе на вкладку События ставим "Все"
             }
-            if (page === "about") currentPage = "about";
+            if (page === "about") {
+                currentPage = "about";
+            }
             render();
         });
     });
