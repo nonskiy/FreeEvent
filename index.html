@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreeEvent — бесплатные события в твоём городе</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div style="display: flex; align-items: center; gap: 10px;">
+    <img src="logo.png" alt="FreeEvent Logo" style="height: 50px;">
+    <div>
+        <h1>🎫 FreeEvent</h1>
+        <p>Все бесплатные события твоего города в одном месте</p>
+    </div>
+</div>
+<div class="header">
+    <div class="header-top">
+        <div>
+            <h1>🎫 FreeEvent</h1>
+            <p>Все бесплатные события твоего города в одном месте</p>
+        </div>
+        <button class="theme-toggle" id="themeToggleBtn">
+            🌙 Тёмная тема
+        </button>
+    </div>
+    <div class="nav">
+        <a class="nav-link active" data-page="home">Главная</a>
+        <a class="nav-link" data-page="events">События</a>
+        <a class="nav-link" data-page="about">О проекте</a>
+    </div>
+</div>
+
+<div class="container" id="app">
+    <!-- сюда динамически загружаются страницы -->
+    <div style="text-align: center; padding: 3rem;">Загрузка событий...</div>
+</div>
+
+<footer>
+    <p>FreeEvent — агрегатор бесплатных событий. Если вы нашли неточность, напишите нам.</p>
+    <p>✨ Предложить событие: freeevent@example.com | Поддержать проект: <a href="#" id="donateLink">донат</a></p>
+</footer>
+
+<script>
+    // Глобальные переменные
+    let eventsData = [];
+    let currentFilter = "все";
+    let currentPage = "home";
+
+    // === УПРАВЛЕНИЕ ТЁМНОЙ ТЕМОЙ ===
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark');
+            if (themeToggleBtn) themeToggleBtn.innerHTML = '☀️ Светлая тема';
+        } else {
+            document.body.classList.remove('dark');
+            if (themeToggleBtn) themeToggleBtn.innerHTML = '🌙 Тёмная тема';
+        }
+    }
+
+    function toggleTheme() {
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        if (document.body.classList.contains('dark')) {
+            document.body.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+            if (themeToggleBtn) themeToggleBtn.innerHTML = '🌙 Тёмная тема';
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+            if (themeToggleBtn) themeToggleBtn.innerHTML = '☀️ Светлая тема';
+        }
+    }
+
+    // Функция загрузки данных из JSON-файла
+    async function loadEvents() {
+        try {
+            const response = await fetch('data_base.json');
+            const data = await response.json();
+            eventsData = data.events;
+            render();
+        } catch (error) {
+            console.error('Ошибка загрузки событий:', error);
+            document.getElementById('app').innerHTML = '<div class="empty-message">❌ Не удалось загрузить события. Проверьте файл data_base.json</div>';
+        }
+    }
+
+    function renderEventsPage() {
+        let filteredEvents = eventsData;
+        if (currentFilter !== "все") {
+            filteredEvents = eventsData.filter(e => e.category === currentFilter);
+        }
+
+        const filterButtons = getFilterButtonsHtml();
+        
+        if (filteredEvents.length === 0) {
+            return `
+                ${filterButtons}
+                <div class="empty-message">😕 Нет событий в этой категории. Попробуйте другой фильтр!</div>
+            `;
+        }
+
+        return `
+            ${filterButtons}
+            <div class="events-grid">
+                ${filteredEvents.map(event => `
+                    <div class="card">
+                        <div class="card-content">
+                            <span class="card-category">${event.category}</span>
+                            <h3>${escapeHtml(event.title)}</h3>
+                            <div class="card-date">📅 ${event.date} | ${event.time}</div>
+                            <div class="card-place">📍 ${escapeHtml(event.place)}</div>
+                            <a href="${event.link}" target="_blank" class="card-link">Подробнее →</a>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="monetization-banner">
+                💰 Хотите выделить ваше событие? Продвижение в топе всего за 200₽/день. Напишите нам!
+            </div>
+        `;
+    }
+
+    function getFilterButtonsHtml() {
+        const categories = ["Все", "Лекция", "Выставка", "Концерт", "Мастер-класс", "Кино", "Театр", "Экскурсия", "Игры"];
+        return `
+            <div class="filters">
+                <span class="filter-label">📂 Категории:</span>
+                ${categories.map(cat => `
+                    <button class="filter-btn ${currentFilter === cat ? 'active' : ''}" data-filter="${cat}">${cat === 'все' ? 'Все' : cat}</button>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderHomePage() {
+        const nearestEvents = [...eventsData].sort((a,b) => new Date(a.date) - new Date(b.date)).slice(0, 5);
+        
+        return `
+            <div class="info-block">
+                <h2>🚀 Бесплатно и интересно рядом</h2>
+                <p>Каждый день в городе проходят десятки лекций, выставок и концертов — совершенно бесплатно. FreeEvent собирает их для вас.</p>
+                <p style="margin-top: 0.5rem;"><strong>Выберите город:</strong> 
+                    <select id="citySelect" style="padding: 0.3rem;">
+                       <option selected>Симферополь</option>
+                        <option>Алупка</option>
+                        <option>Алушта</option>
+                        <option>Армянск</option>
+                        <option>Бахчисарай</option>
+                        <option>Белогорск</option>
+                        <option>Джанкой</option>
+                        <option>Евпатория</option>
+                        <option>Керчь</option>
+                        <option>Красноперекопск</option>
+                        <option>Саки</option>
+                        <option>Старый Крым</option>
+                        <option>Судак</option>
+                        <option>Феодосия</option>
+                        <option>Щёлкино</option>
+                        <option>Ялта</option>
+                    </select>
+                </p>
+                <p style="font-size: 0.8rem; opacity: 0.7;">※ Сейчас доступен только город Симферополь. 
+                    Другие города будут добавлены в следующих обновлениях.</p>
+            </div>
+            
+            <h2>⚡ Ближайшие события</h2>
+            <div class="events-grid">
+                ${nearestEvents.map(event => `
+                    <div class="card">
+                        <div class="card-content">
+                            <span class="card-category">${event.category}</span>
+                            <h3>${escapeHtml(event.title)}</h3>
+                            <div class="card-date">📅 ${event.date} | ${event.time}</div>
+                            <div class="card-place">📍 ${escapeHtml(event.place)}</div>
+                            <a href="${event.link}" target="_blank" class="card-link">Подробнее →</a>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="cta-button" id="showAllEventsBtn">Смотреть все события →</button>
+            </div>
+            
+            <div class="monetization-banner">
+                📢 Реклама вашего бизнеса здесь. Всего от 500₽/неделя. Пишите: freeevent@example.com
+            </div>
+        `;
+    }
+
+    function renderAboutPage() {
+        return `
+            <div class="info-block" style="max-width: 800px; margin: 0 auto;">
+                <h2>🧠 О проекте FreeEvent</h2>
+                <p><strong>Проблема:</strong> большинство афиш показывают только платные события, а бесплатные мероприятия сложно найти — они теряются в соцсетях.</p>
+                <p><strong>Решение:</strong> сайт-агрегатор, где собраны только бесплатные события: лекции, выставки, концерты, мастер-классы, кино и экскурсии.</p>
+                <p><strong>Монетизация:</strong> платное выделение событий (200–300₽ за день в топе), баннерная реклама, донаты.</p>
+                <p><strong>Планы:</strong> добавить Telegram-бота с ежедневной рассылкой, подключить другие города, сделать форму для добавления событий от организаторов.</p>
+                <hr style="margin: 1.5rem 0;">
+                <p>📧 По вопросам сотрудничества: <strong>freeevent@example.com</strong></p>
+                <p>💡 <strong>Хотите добавить событие?</strong> Напишите нам на почту — мы проверим и опубликуем бесплатно.</p>
+                <div style="margin-top: 1.5rem; background: var(--filter-bg); padding: 1rem; border-radius: 1rem;">
+                    <strong>⚡ Стартап в цифрах (MVP):</strong><br>
+                    • ${eventsData.length} событий в каталоге уже сейчас<br>
+                    • 8 категорий для фильтрации<br>
+                    • Готовность к запуску за 3 недели<br>
+                    • Ежемесячные расходы: ~300₽
+                </div>
+            </div>
+        `;
+    }
+
+    function render() {
+        const app = document.getElementById("app");
+        if (!app) return;
+        
+        if (currentPage === "home") {
+            app.innerHTML = renderHomePage();
+            const showAllBtn = document.getElementById("showAllEventsBtn");
+            if (showAllBtn) {
+                showAllBtn.addEventListener("click", () => {
+                    currentPage = "events";
+                    render();
+                    updateNavActive();
+                });
+            }
+            const citySelect = document.getElementById("citySelect");
+            if (citySelect) {
+                citySelect.addEventListener("change", (e) => {
+                    const defaultCity = "Симферополь"
+                    const selectedCity = e.target.value
+                    if(selectedCity !== defaultCity){
+                        alert(`⚠️ Город "${selectedCity}" пока не подключён. Возвращаемся к городу по умолчанию — "${defaultCity}".`);
+                        citySelect.value = defaultCity
+                    }else{
+                        alert(`✅ Город "${defaultCity}" уже доступен. События для него уже в каталоге!`);
+                    }
+                    //alert(`✨ В будущей версии: события для города "${e.target.value}". А пока собираем афишу для вашего города!`);
+                });
+            }
+        } 
+        else if (currentPage === "events") {
+            app.innerHTML = renderEventsPage();
+            document.querySelectorAll(".filter-btn").forEach(btn => {
+                btn.addEventListener("click", (e) => {
+                    currentFilter = btn.getAttribute("data-filter");
+                    render();
+                });
+            });
+        } 
+        else if (currentPage === "about") {
+            app.innerHTML = renderAboutPage();
+        }
+        
+        updateNavActive();
+    }
+
+    function updateNavActive() {
+        const navLinks = document.querySelectorAll(".nav-link");
+        navLinks.forEach(link => {
+            const page = link.getAttribute("data-page");
+            if (page === currentPage) {
+                link.classList.add("active");
+            } else {
+                link.classList.remove("active");
+            }
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Навигация
+    document.querySelectorAll(".nav-link").forEach(link => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault();
+            const page = link.getAttribute("data-page");
+            if (page === "home") currentPage = "home";
+            if (page === "events") {
+                currentPage = "events";
+                currentFilter = "все";
+            }
+            if (page === "about") currentPage = "about";
+            render();
+        });
+    });
+
+    // Кнопка тёмной темы
+    const themeBtn = document.getElementById("themeToggleBtn");
+    if (themeBtn) {
+        themeBtn.addEventListener("click", toggleTheme);
+    }
+
+    // Донат (демо)
+    const donateLink = document.getElementById("donateLink");
+    if (donateLink) {
+        donateLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            alert("💛 Спасибо за поддержку! В будущем здесь будет кнопка на ЮMoney или СБП.");
+        });
+    }
+
+    // Инициализация темы и загрузка данных
+    initTheme();
+    loadEvents();
+</script>
+</body>
+</html>
